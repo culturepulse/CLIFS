@@ -3,7 +3,7 @@
 # "Tracking group identity through natural language within groups"
 # nUAI modified to remove the z-score calculation
 
-from clifs.uai_codes import *
+from clifs.core.uai_codes import *
 import nltk
 from scipy.stats import zscore
 nltk.download('punkt')

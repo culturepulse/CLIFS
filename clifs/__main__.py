@@ -1,15 +1,25 @@
 #!/usr/bin/env python
-"""
-Command-line interface for CLIFS (Cognitive Linguistic Identity Fusion Score).
-"""
+"""CLI for CLIFS."""
+
 import argparse
 import sys
-import pandas as pd
 from pathlib import Path
+import pandas as pd
+from tqdm import tqdm
+import nltk
+import getpass
+from openai import OpenAI
+
+from clifs.config import CLIFSConfig
+from clifs.models import ModelLoader
+from clifs.predictors import (
+    ClassificationPredictor,
+    RegressionPredictor,
+    EnsemblePredictor
+)
 
 
 def main():
-    """Main entry point for the CLIFS CLI."""
     parser = argparse.ArgumentParser(
         description="CLIFS: Cognitive Linguistic Identity Fusion Score",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -29,105 +39,110 @@ Examples:
         """
     )
 
-    parser.add_argument(
-        '--input', '-i',
-        type=str,
-        required=True,
-        help='Input CSV file with "text" column'
-    )
-
-    parser.add_argument(
-        '--output', '-o',
-        type=str,
-        required=True,
-        help='Output CSV file path for results'
-    )
-
-    parser.add_argument(
-        '--groups', '-g',
-        nargs='+',
-        default=[],
-        help='Known target groups for analysis (space-separated)'
-    )
-
-    parser.add_argument(
-        '--regression', '-r',
-        action='store_true',
-        help='Use regression mode (continuous scores) instead of classification'
-    )
-
-    parser.add_argument(
-        '--ensemble', '-e',
-        action='store_true',
-        help='Use ensemble mode (requires OpenAI and DeepSeek API keys)'
-    )
-
-    parser.add_argument(
-        '--text-column',
-        type=str,
-        default='text',
-        help='Name of the text column in input CSV (default: "text")'
-    )
-
-    parser.add_argument(
-        '--version', '-v',
-        action='version',
-        version='CLIFS 0.1.0'
-    )
+    parser.add_argument('--input', '-i', type=Path, required=True,
+                       help='Input CSV file with text column')
+    parser.add_argument('--output', '-o', type=Path, required=True,
+                       help='Output CSV file path for results')
+    parser.add_argument('--groups', '-g', nargs='+', default=[],
+                       help='Known target groups for analysis')
+    parser.add_argument('--regression', '-r', action='store_true',
+                       help='Use regression mode (continuous scores)')
+    parser.add_argument('--ensemble', '-e', action='store_true',
+                       help='Use ensemble mode (requires API keys)')
+    parser.add_argument('--text-column', default='text',
+                       help='Name of text column in CSV')
+    parser.add_argument('--cpu', action='store_true',
+                       help='Force CPU usage')
+    parser.add_argument('--version', action='version', version='CLIFS 0.1.0')
 
     args = parser.parse_args()
 
-    # Validate input file
-    input_path = Path(args.input)
-    if not input_path.exists():
+    # Validate input
+    if not args.input.exists():
         print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    # Load data
     try:
+        # Load configuration
+        config = CLIFSConfig.from_env()
+        config.runtime.force_cpu = args.cpu
+        config.runtime.setup_environment()
+        config.paths.ensure_directories()
+
+        # Load data
+        print(f"Loading data from {args.input}...")
         df = pd.read_csv(args.input)
-    except Exception as e:
-        print(f"Error: Failed to read input CSV: {e}", file=sys.stderr)
-        sys.exit(1)
 
-    # Validate text column
-    if args.text_column not in df.columns:
-        print(
-            f"Error: Column '{args.text_column}' not found in input CSV. "
-            f"Available columns: {', '.join(df.columns)}",
-            file=sys.stderr
-        )
-        sys.exit(1)
+        if args.text_column not in df.columns:
+            print(f"Error: Column '{args.text_column}' not found", file=sys.stderr)
+            print(f"Available columns: {', '.join(df.columns)}", file=sys.stderr)
+            sys.exit(1)
 
-    # Rename column to 'text' if different
-    if args.text_column != 'text':
-        df = df.rename(columns={args.text_column: 'text'})
+        if args.text_column != 'text':
+            df = df.rename(columns={args.text_column: 'text'})
 
-    # Import and run CLIFS
-    try:
-        from clifs import clifs
+        # Download NLTK data
+        nltk.download('punkt', quiet=True)
 
-        print(f"Processing {len(df)} texts...")
-        print(f"Mode: {'Ensemble' if args.ensemble else 'Regression' if args.regression else 'Classification'}")
-        if args.groups:
-            print(f"Known groups: {', '.join(args.groups)}")
+        # Load models
+        print("Loading models...")
+        loader = ModelLoader(config)
+        models = loader.load_base_models()
 
-        results = clifs.clifs(
-            df=df,
-            known_groups=args.groups,
-            ensemble=args.ensemble,
-            regression=args.regression,
-            save_path=args.output
-        )
+        # Create predictor based on mode
+        known_groups = tuple(args.groups)
 
-        print(f"\nSuccess! Results saved to: {args.output}")
-        print(f"Processed {len(results)} texts")
+        if args.ensemble:
+            print("Setting up ensemble mode...")
+            models = loader.add_ensemble(models)
+
+            # Get API keys
+            print("\nAPI keys required for ensemble mode:")
+            ds_key = getpass.getpass("  DeepSeek API key: ")
+            oai_key = getpass.getpass("  OpenAI API key: ")
+
+            ds_client = OpenAI(base_url="https://api.deepseek.com", api_key=ds_key)
+            oai_client = OpenAI(api_key=oai_key)
+
+            predictor = EnsemblePredictor(models, known_groups, oai_client, ds_client)
+            mode = "ensemble"
+
+        elif args.regression:
+            print("Setting up regression mode...")
+            models = loader.add_regression(models)
+            predictor = RegressionPredictor(models, known_groups)
+            mode = "regression"
+
+        else:
+            print("Setting up classification mode...")
+            predictor = ClassificationPredictor(models, known_groups)
+            mode = "classification"
+
+        # Run predictions
+        print(f"\nProcessing {len(df)} texts ({mode} mode)...")
+        if known_groups:
+            print(f"Known groups: {', '.join(known_groups)}")
+
+        for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing"):
+            result = predictor.predict_single(row['text'])
+            for key, value in result.items():
+                df.at[idx, key] = value
+
+            # Checkpoint every 10
+            if (idx + 1) % 10 == 0:
+                df.to_csv(args.output, index=False)
+
+        # Final save
+        df.to_csv(args.output, index=False)
+        print(f"\n✓ Success! Results saved to: {args.output}")
+        print(f"  Processed {len(df)} texts")
 
     except KeyboardInterrupt:
         print("\n\nInterrupted by user", file=sys.stderr)
         sys.exit(130)
+
     except Exception as e:
-        print(f"\nError during processing: {e}", file=sys.stderr)
+        print(f"\nError: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)

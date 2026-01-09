@@ -5,7 +5,7 @@
 # "Measuring socio-psychological drivers of extreme violence in online terrorist manifestos: an alternative linguistic risk assessment model"
 
 import re
-from clifs.vri_codes_lite_clifs import *
+from clifs.core.vri_codes_lite_clifs import *
 import nltk
 
 nltk.download('punkt')

@@ -21,7 +21,7 @@
 
 import torch
 import spacy
-from clifs import vri_codes_lite_clifs as vri_codes
+from clifs.core import vri_codes_lite_clifs as vri_codes
 import gensim.downloader as api
 # Default candidate word lists (customize as needed)
 IDENTITY_WORDS = set()
