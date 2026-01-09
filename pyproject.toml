@@ -1,0 +1,186 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clifs"
+version = "0.1.0"
+description = "Cognitive Linguistic Identity Fusion Score - A cognition-informed framework for quantifying identity fusion from text"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Devin R. Wright", email = "contact@devwright.com"}
+]
+maintainers = [
+    {name = "Devin R. Wright", email = "contact@devwright.com"}
+]
+keywords = [
+    "nlp",
+    "identity-fusion",
+    "cognitive-linguistics",
+    "machine-learning",
+    "transformers",
+    "psychology",
+    "computational-social-science"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scikit-learn==1.6.1",
+    "nltk>=3.8.0",
+    "tqdm>=4.65.0",
+    "joblib>=1.3.0",
+    "scipy>=1.10.0",
+    "spacy>=3.5.0",
+    "gensim>=4.3.0",
+    "sentence-transformers>=2.2.0",
+    # Note: torch and transformers are specified separately for GPU/CPU variants
+]
+
+[project.optional-dependencies]
+# GPU support with CUDA
+gpu = [
+    "torch>=2.1.0,<2.2.0",
+    "torchvision>=0.16.0",
+    "torchaudio>=2.1.0",
+    "transformers @ git+https://github.com/huggingface/transformers.git@31ab7168ff7e07f61c90134e5238c4d97606aa70",
+    "faiss-gpu>=1.7.4",
+    "cuml==24.02.*",
+]
+
+# CPU-only support
+cpu = [
+    "torch>=2.1.0,<2.2.0",
+    "torchvision>=0.16.0",
+    "torchaudio>=2.1.0",
+    "transformers @ git+https://github.com/huggingface/transformers.git@31ab7168ff7e07f61c90134e5238c4d97606aa70",
+    "faiss-cpu>=1.7.4",
+]
+
+# Ensemble mode with RAG (requires API access)
+ensemble = [
+    "openai>=1.0.0",
+    "faiss-cpu>=1.7.4",  # Can be overridden by gpu/cpu extra
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.3.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.3.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.3.0",
+    "ipykernel>=6.23.0",
+    "jupyter>=1.0.0",
+]
+
+# SageMaker deployment dependencies
+sagemaker = [
+    "sagemaker>=2.200.0",
+    "boto3>=1.28.0",
+    "botocore>=1.31.0",
+]
+
+# Complete installation with all features
+all = [
+    "torch>=2.1.0,<2.2.0",
+    "torchvision>=0.16.0",
+    "torchaudio>=2.1.0",
+    "transformers @ git+https://github.com/huggingface/transformers.git@31ab7168ff7e07f61c90134e5238c4d97606aa70",
+    "faiss-gpu>=1.7.4",
+    "cuml==24.02.*",
+    "openai>=1.0.0",
+    "sagemaker>=2.200.0",
+    "boto3>=1.28.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/DevinW-sudo/CLIFS"
+Repository = "https://github.com/DevinW-sudo/CLIFS"
+Issues = "https://github.com/DevinW-sudo/CLIFS/issues"
+Documentation = "https://github.com/DevinW-sudo/CLIFS#readme"
+
+[project.scripts]
+clifs = "clifs.__main__:main"
+
+[tool.setuptools]
+packages = ["clifs"]
+
+[tool.setuptools.package-data]
+clifs = ["*.txt", "*.json", "*.csv"]
+
+# Black code formatter configuration
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | exec_dir
+)/
+'''
+
+# isort import sorter configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+known_first_party = ["clifs"]
+
+# pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# mypy type checking configuration
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["clifs"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

@@ -12,7 +12,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 *.log
-*.toml
+.venv/
 
 # ------------------------
 # Jupyter
@@ -31,6 +31,7 @@ condaenv*
 # Editors / IDEs
 # ------------------------
 .vscode/
+.idea/
 
 # ------------------------
 # Project-specific

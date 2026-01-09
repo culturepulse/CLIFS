@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 os.environ["TORCH_COMPILE_DISABLE"] = "1"   # stop torch.compile attempts
 os.environ["TORCHDYNAMO_VERBOSE"] = "0"
@@ -29,6 +30,13 @@ for name in ("torch._dynamo", "torch._inductor", "torch.overrides"):
 
 warnings.filterwarnings("ignore", module="torch._inductor")
 warnings.filterwarnings("ignore", module="torch.overrides")
+
+# Get project root directory (parent of clifs package)
+PROJECT_ROOT = Path(__file__).parent.parent
+MODELS_DIR = PROJECT_ROOT / "models"
+DATA_DIR = PROJECT_ROOT / "data"
+MBERT_MODEL_PATH = MODELS_DIR / "best_mbert_model" / "best_mbert_model" / "modern_BERT_fusion_augmented_data_finegrain"
+RF_MODELS_DIR = MODELS_DIR / "best_rf"
 
 
 all_other_label_map = {0 : "high", 1 : "low", 2: "medium"}
@@ -157,9 +165,9 @@ def load_models():
     global docs_df
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
     # train set
-    aug_train = '../data/ap_study1_augmented_finegrain_train.csv'
+    aug_train = DATA_DIR / 'ap_study1_augmented_finegrain_train.csv'
     # for rag
     docs_df = pd.read_csv(aug_train)
         
@@ -178,11 +186,11 @@ def load_models():
     torch.set_float32_matmul_precision('high')
     sbert_model = SentenceTransformer('all-mpnet-base-v2')
     sbert_model.to(device)
-    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained("../models/best_mbert_model/best_mbert_model/modern_BERT_fusion_augmented_data_finegrain")
+    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained(str(MBERT_MODEL_PATH))
     mbert_fine_tuned.to(device)
     mbert_fine_tuned.eval()
-    clifs_model = joblib.load('../models/best_rf/best_model_rf_aug.joblib')
-    sbert_rf_model = joblib.load('../models/best_rf/sbert_classification_best_model_augmented.joblib')
+    clifs_model = joblib.load(RF_MODELS_DIR / 'best_model_rf_aug.joblib')
+    sbert_rf_model = joblib.load(RF_MODELS_DIR / 'sbert_classification_best_model_augmented.joblib')
     rag_model_r1 = 'deepseek-reasoner'
     rag_model_4o = 'gpt-4o'
     mbert_base, tokenizer, nlp = mlmif.load_model_nlp_and_tokenizer(device=device)
@@ -207,11 +215,11 @@ def load_model():
     global mbert_base, tokenizer, nlp
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    clifs_model = joblib.load('../models/best_rf/best_model_rf_aug.joblib')
+
+    clifs_model = joblib.load(RF_MODELS_DIR / 'best_model_rf_aug.joblib')
     sbert_model = SentenceTransformer('all-mpnet-base-v2')
     sbert_model.to(device)
-    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained("../models/best_mbert_model/best_mbert_model/modern_BERT_fusion_augmented_data_finegrain")
+    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained(str(MBERT_MODEL_PATH))
     mbert_fine_tuned.to(device)
     mbert_fine_tuned.eval()
     mbert_base, tokenizer, nlp = mlmif.load_model_nlp_and_tokenizer(device=device)
@@ -230,11 +238,11 @@ def load_regression_model():
     global mbert_base, tokenizer, nlp
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    clifs_model_r = joblib.load('../models/best_rf/augmented_regression_best.joblib')
+
+    clifs_model_r = joblib.load(RF_MODELS_DIR / 'augmented_regression_best.joblib')
     sbert_model = SentenceTransformer('all-mpnet-base-v2')
     sbert_model.to(device)
-    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained("../models/best_mbert_model/best_mbert_model/modern_BERT_fusion_augmented_data_finegrain")
+    mbert_fine_tuned = AutoModelForSequenceClassification.from_pretrained(str(MBERT_MODEL_PATH))
     mbert_fine_tuned.to(device)
     mbert_fine_tuned.eval()
     mbert_base, tokenizer, nlp = mlmif.load_model_nlp_and_tokenizer(device=device)

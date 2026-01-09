@@ -6,6 +6,11 @@ from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 from openai import OpenAI
 import os
+from pathlib import Path
+
+# Get project root directory (parent of clifs package)
+PROJECT_ROOT = Path(__file__).parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
 
 def search(query, index, model, docs_df, number_of_results=5):
     """
@@ -160,7 +165,7 @@ def build_faiss_index(docs_df, model):
     # Build FAISS index with SBERT embeddings
     # --------------------------------------
     # check if faiss index already exists
-    index_path = '../data/faiss_index.index'
+    index_path = DATA_DIR / 'faiss_index.index'
     if os.path.exists(index_path):
         index = faiss.read_index(index_path)
         print("FAISS index loaded from disk.")
