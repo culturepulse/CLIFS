@@ -94,11 +94,11 @@ def obtain_class_probs(text, model=None, tokenizer=None):
     model.eval()
     
     with torch.inference_mode():
-        outputs = model(**inputs)  
+        outputs = model(**inputs)
         logits = outputs.logits
         probabilities = torch.softmax(logits, dim=-1)
 
-    return probabilities.cpu().numpy().flatten()
+    return probabilities.cpu().detach().numpy().flatten()
  
 def obtain_class_probs_all(df, model=None, tokenizer=None):
     if model is None:
